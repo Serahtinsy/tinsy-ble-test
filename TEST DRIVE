@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tinsy Bluetooth Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 35px 15px;
+      background: #f1f5f9;
+    }
+    .panel {
+      background: white;
+      padding: 25px;
+      border-radius: 18px;
+      max-width: 420px;
+      margin: auto;
+    }
+    button {
+      padding: 13px 20px;
+      margin: 8px;
+      border: 0;
+      border-radius: 10px;
+      background: #536dfe;
+      color: white;
+      font-size: 16px;
+    }
+    button:disabled { opacity: 0.5; }
+    #status { margin: 20px; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>🤖 Tinsy</h1>
+    <p>Bluetooth connection test</p>
+
+    <p id="status">Not connected</p>
+
+    <button id="connect">Connect to Tinsy</button>
+    <button id="send" disabled>Send test message</button>
+  </div>
+
+  <script>
+    const SERVICE_UUID =
+      "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+
+    const RX_UUID =
+      "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
+
+    let characteristic;
+
+    const status = document.getElementById("status");
+    const sendButton = document.getElementById("send");
+
+    document.getElementById("connect").onclick = async () => {
+      try {
+        if (!navigator.bluetooth) {
+          status.textContent =
+            "Bluetooth is not supported in this browser.";
+          return;
+        }
+
+        status.textContent = "Searching for Tinsy...";
+
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: "Tinsy" }],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        status.textContent = "Connecting...";
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+
+        characteristic = await service.getCharacteristic(RX_UUID);
+
+        status.textContent = "Connected to Tinsy! 🎉";
+        sendButton.disabled = false;
+
+        device.addEventListener("gattserverdisconnected", () => {
+          status.textContent = "Tinsy disconnected.";
+          sendButton.disabled = true;
+        });
+
+      } catch (error) {
+        status.textContent = "Connection error: " + error.message;
+      }
+    };
+
+    sendButton.onclick = async () => {
+      try {
+        const message = new TextEncoder().encode("Hello Tinsy!");
+        await characteristic.writeValue(message);
+        status.textContent = "Message sent to Tinsy! 🤖";
+      } catch (error) {
+        status.textContent = "Send error: " + error.message;
+      }
+    };
+  </script>
+</body>
+</html>
